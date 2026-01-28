@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tetris/constants.dart';
@@ -41,6 +38,9 @@ void main() {
     test('piece cannot move left past wall', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
+      
+      // Start the game to enable input
+      game.startGame();
 
       // Place a 2-wide piece at the leftmost edge
       game.currentPiece = Tetromino.create(TetrominoType.O, 0, 0);
@@ -54,6 +54,9 @@ void main() {
     test('piece cannot move right past wall', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
+      
+      // Start the game to enable input
+      game.startGame();
 
       // Place a 2-wide piece at the rightmost edge
       final rightX = GameConstants.cols - 2; // O piece is 2-wide
@@ -68,6 +71,9 @@ void main() {
     test('piece moves down until lock', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
+      
+      // Start the game to enable input
+      game.startGame();
 
       // Use a simple I piece
       final piece = Tetromino.create(TetrominoType.I, GameConstants.cols ~/ 2, 0);
@@ -92,6 +98,9 @@ void main() {
     test('rotate succeeds in open space', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
+      
+      // Start the game to enable input
+      game.startGame();
 
       // Use T piece in the middle area
       final startX = GameConstants.cols ~/ 2 - 1;
@@ -109,6 +118,9 @@ void main() {
     test('hard drop increases score based on drop distance', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
+      
+      // Start the game to enable input
+      game.startGame();
 
       // Use I piece to drop from top
       game.currentPiece = Tetromino.create(TetrominoType.I, GameConstants.cols ~/ 2, 0);

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'game_logic.dart';
+import 'game_state.dart';
 import 'controls.dart';
 import 'constants.dart';
 import 'game_over_dialog.dart';
@@ -16,8 +17,8 @@ class GameBoard extends StatefulWidget {
 class _GameBoardState extends State<GameBoard> 
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late GameLogic gameLogic;
-  Timer? _timer;
-  bool _isInitialized = false;
+  Timer? _gameTimer;
+  bool _gameOverDialogShown = false; // Prevent duplicate dialogs
   
   // Animation controllers
   late AnimationController _lineClearController;
@@ -49,70 +50,130 @@ class _GameBoardState extends State<GameBoard>
       CurvedAnimation(parent: _gameOverController, curve: Curves.elasticOut),
     );
     
+    // Initialize game logic and start game
     gameLogic = GameLogic();
-    _isInitialized = true;
-    _startGame();
+    gameLogic.addListener(_onGameStateChanged);
+    
+    // Start the game immediately when screen loads
+    gameLogic.startGame();
+    _startGameTimer();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timer?.cancel();
+    _stopGameTimer();
     _lineClearController.dispose();
     _gameOverController.dispose();
+    gameLogic.removeListener(_onGameStateChanged);
     gameLogic.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        if (!gameLogic.gameOver && !gameLogic.isPaused) {
-          gameLogic.togglePause();
-        }
+  /// GAME STATE CHANGE HANDLER
+  /// Responds to game state changes and manages timer/UI accordingly
+  void _onGameStateChanged() {
+    if (!mounted) return;
+    
+    switch (gameLogic.gameState) {
+      case GameState.playing:
+        _startGameTimer();
+        _gameOverDialogShown = false; // Reset dialog flag for new game
         break;
-      case AppLifecycleState.resumed:
-        // Game remains paused until user manually resumes
+        
+      case GameState.paused:
+        _stopGameTimer();
         break;
-      case AppLifecycleState.detached:
-        _timer?.cancel();
+        
+      case GameState.gameOver:
+        _stopGameTimer();
+        _triggerGameOverAnimation();
         break;
-      case AppLifecycleState.hidden:
+        
+      case GameState.idle:
+        _stopGameTimer();
         break;
     }
   }
-
-  void _startGame() {
-    _timer?.cancel();
-    _timer = Timer.periodic(gameLogic.dropDuration, (timer) {
-      if (!gameLogic.gameOver && !gameLogic.isPaused && !gameLogic.isLineClearing) {
+  
+  /// TIMER MANAGEMENT
+  /// Proper timer lifecycle management based on game state
+  
+  void _startGameTimer() {
+    _stopGameTimer(); // Ensure no duplicate timers
+    
+    if (!gameLogic.gameState.shouldRunTimer) return;
+    
+    _gameTimer = Timer.periodic(gameLogic.dropDuration, (timer) {
+      // Only move piece if game is still in playing state
+      if (gameLogic.gameState.shouldRunTimer && !gameLogic.isLineClearing) {
         gameLogic.movePieceDown();
         
         // Restart timer if level changed (speed increased)
         if (timer.tick > 1) {
           final currentDuration = Duration(milliseconds: timer.tick * gameLogic.dropDuration.inMilliseconds);
           if (currentDuration != gameLogic.dropDuration) {
-            _startGame();
+            _startGameTimer();
           }
         }
       }
     });
   }
+  
+  void _stopGameTimer() {
+    _gameTimer?.cancel();
+    _gameTimer = null;
+  }
+  
+  /// GAME OVER HANDLING
+  /// Ensures game over is handled exactly once
+  
+  void _triggerGameOverAnimation() {
+    if (!_gameOverController.isCompleted) {
+      _gameOverController.forward();
+      
+      // Show dialog after animation, but only once
+      Future.delayed(GameConstants.gameOverAnimationDuration, () {
+        if (mounted && gameLogic.gameState == GameState.gameOver && !_gameOverDialogShown) {
+          _gameOverDialogShown = true;
+          _showGameOverDialog();
+        }
+      });
+    }
+  }
+
+  /// APP LIFECYCLE HANDLING
+  /// Proper pause/resume behavior based on app state
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // Auto-pause only if game is currently playing
+        if (gameLogic.gameState == GameState.playing) {
+          gameLogic.pauseGame();
+        }
+        break;
+        
+      case AppLifecycleState.resumed:
+        // Game remains paused until user manually resumes
+        // This prevents accidental resume when returning to app
+        break;
+        
+      case AppLifecycleState.detached:
+        _stopGameTimer();
+        break;
+        
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized) {
-      return const Scaffold(
-        backgroundColor: GameConstants.backgroundColor,
-        body: Center(
-          child: CircularProgressIndicator(color: GameConstants.primaryCyan),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: GameConstants.backgroundColor,
       body: SafeArea(
@@ -123,16 +184,6 @@ class _GameBoardState extends State<GameBoard>
             if (gameLogic.isLineClearing && !_lineClearController.isAnimating) {
               _lineClearController.forward().then((_) {
                 _lineClearController.reset();
-              });
-            }
-            
-            if (gameLogic.gameOver && !_gameOverController.isCompleted) {
-              _gameOverController.forward();
-              // Show game over dialog after animation
-              Future.delayed(GameConstants.gameOverAnimationDuration, () {
-                if (mounted && gameLogic.gameOver) {
-                  _showGameOverDialog();
-                }
               });
             }
             
@@ -188,7 +239,7 @@ class _GameBoardState extends State<GameBoard>
                       ),
 
                       // Game board
-                      Container(
+                      SizedBox(
                         width: boardWidth,
                         height: boardHeight,
                         child: _buildGameBoard(cellSize),
@@ -204,7 +255,7 @@ class _GameBoardState extends State<GameBoard>
                 ),
 
                 // Game controls
-                Container(
+                SizedBox(
                   height: screenHeight * GameConstants.controlsHeightRatio,
                   child: GameControls(
                     onMoveLeft: gameLogic.movePieceLeft,
@@ -250,7 +301,11 @@ class _GameBoardState extends State<GameBoard>
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             iconSize: isSmallScreen ? 20 : 24,
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              // Properly clean up when leaving game screen
+              gameLogic.returnToIdle();
+              Navigator.pop(context);
+            },
           ),
           Text(
             'TETRIS',
@@ -359,13 +414,13 @@ class _GameBoardState extends State<GameBoard>
     return GestureDetector(
       // Touch controls
       onTap: () {
-        if (!gameLogic.gameOver && !gameLogic.isPaused) {
+        if (gameLogic.gameState.acceptsInput) {
           HapticFeedback.lightImpact();
           gameLogic.rotatePiece();
         }
       },
       onPanEnd: (details) {
-        if (gameLogic.gameOver || gameLogic.isPaused) return;
+        if (!gameLogic.gameState.acceptsInput) return;
 
         final velocity = details.velocity.pixelsPerSecond;
         final threshold = GameConstants.swipeThreshold;
@@ -632,10 +687,12 @@ class _GameBoardState extends State<GameBoard>
         onRetry: () {
           Navigator.of(context).pop(); // Close dialog
           _gameOverController.reset();
-          gameLogic.reset();
+          _gameOverDialogShown = false;
+          gameLogic.reset(); // This will transition to playing state
         },
         onHome: () {
           Navigator.of(context).pop(); // Close dialog
+          gameLogic.returnToIdle(); // Clean transition to idle
           Navigator.of(context).pop(); // Go back to home screen
         },
       ),

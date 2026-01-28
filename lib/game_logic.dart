@@ -2,38 +2,126 @@ import 'package:flutter/material.dart';
 import 'tetromino.dart';
 import 'constants.dart';
 import 'score_manager.dart';
+import 'game_state.dart';
 import 'dart:math';
 
 class GameLogic extends ChangeNotifier {
   static const int rows = GameConstants.rows;
   static const int cols = GameConstants.cols;
 
+  // Game board
   List<List<Color?>> board = List.generate(
     rows,
     (i) => List.generate(cols, (j) => null),
   );
 
+  // Game pieces
   Tetromino? currentPiece;
   Tetromino? nextPiece;
   Tetromino? ghostPiece;
+  
+  // Game stats
   int score = 0;
   int level = 1;
   int lines = 0;
   int highScore = 0;
-  bool gameOver = false;
-  bool isPaused = false;
+  
+  // Game state - SINGLE SOURCE OF TRUTH
+  GameState _gameState = GameState.idle;
+  GameState get gameState => _gameState;
+  
+  // Line clearing animation
   bool isLineClearing = false;
   List<int> clearingLines = [];
   
-  // Performance optimization
+  // Performance optimization - debounce rapid inputs
   DateTime? _lastMoveTime;
   DateTime? _lastRotateTime;
+  
+  // Game over guard - prevents duplicate triggers
+  bool _gameOverTriggered = false;
 
   final Random _random = Random();
 
   GameLogic() {
     _loadHighScore();
     _initializeGame();
+  }
+
+  /// STATE TRANSITION METHODS
+  /// These methods handle all state changes and ensure proper transitions
+  
+  void _setState(GameState newState) {
+    if (_gameState == newState) return; // No change needed
+    
+    debugPrint('GameState: ${_gameState.name} → ${newState.name}');
+    _gameState = newState;
+    notifyListeners();
+  }
+  
+  /// Start a new game - transition from idle to playing
+  void startGame() {
+    if (_gameState != GameState.idle) {
+      debugPrint('Warning: startGame() called from invalid state: ${_gameState.name}');
+      return;
+    }
+    
+    _resetGameData();
+    _setState(GameState.playing);
+    _initializeGame();
+  }
+  
+  /// Pause the game - only valid when playing
+  void pauseGame() {
+    if (_gameState != GameState.playing) return;
+    _setState(GameState.paused);
+  }
+  
+  /// Resume the game - only valid when paused
+  void resumeGame() {
+    if (_gameState != GameState.paused) return;
+    _setState(GameState.playing);
+  }
+  
+  /// Trigger game over - can only happen once per game
+  void _triggerGameOver() {
+    if (_gameOverTriggered || _gameState == GameState.gameOver) {
+      debugPrint('Game over already triggered, ignoring duplicate');
+      return;
+    }
+    
+    debugPrint('Triggering game over - Score: $score');
+    _gameOverTriggered = true;
+    _setState(GameState.gameOver);
+    _updateHighScore();
+  }
+  
+  /// Reset to idle state - cleans up all game data
+  void returnToIdle() {
+    _resetGameData();
+    _setState(GameState.idle);
+  }
+
+  /// BACKWARD COMPATIBILITY GETTERS
+  /// These maintain compatibility with existing UI code
+  bool get gameOver => _gameState == GameState.gameOver;
+  bool get isPaused => _gameState == GameState.paused;
+
+  /// GAME DATA MANAGEMENT
+  
+  void _resetGameData() {
+    board = List.generate(rows, (i) => List.generate(cols, (j) => null));
+    score = 0;
+    level = 1;
+    lines = 0;
+    isLineClearing = false;
+    clearingLines.clear();
+    currentPiece = null;
+    nextPiece = null;
+    ghostPiece = null;
+    _lastMoveTime = null;
+    _lastRotateTime = null;
+    _gameOverTriggered = false;
   }
 
   Future<void> _loadHighScore() async {
@@ -57,11 +145,9 @@ class GameLogic extends ChangeNotifier {
       currentPiece = Tetromino.create(randomType, cols ~/ 2 - 1, 0);
     }
 
+    // Check for game over condition - piece cannot be placed
     if (_checkCollision(currentPiece!)) {
-      gameOver = true;
-      // Update high score immediately when game ends
-      _updateHighScore();
-      notifyListeners();
+      _triggerGameOver();
       return;
     }
     
@@ -107,7 +193,8 @@ class GameLogic extends ChangeNotifier {
   }
 
   bool movePieceLeft() {
-    if (gameOver || isPaused || currentPiece == null || isLineClearing) return false;
+    // Only accept input when game is actively playing
+    if (!_gameState.acceptsInput || currentPiece == null || isLineClearing) return false;
     
     // Debounce rapid moves
     final now = DateTime.now();
@@ -128,7 +215,8 @@ class GameLogic extends ChangeNotifier {
   }
 
   bool movePieceRight() {
-    if (gameOver || isPaused || currentPiece == null || isLineClearing) return false;
+    // Only accept input when game is actively playing
+    if (!_gameState.acceptsInput || currentPiece == null || isLineClearing) return false;
     
     // Debounce rapid moves
     final now = DateTime.now();
@@ -149,7 +237,8 @@ class GameLogic extends ChangeNotifier {
   }
 
   bool movePieceDown() {
-    if (gameOver || isPaused || currentPiece == null || isLineClearing) return false;
+    // Only accept input when game is actively playing
+    if (!_gameState.acceptsInput || currentPiece == null || isLineClearing) return false;
 
     final newPiece = currentPiece!.copyWith(y: currentPiece!.y + 1);
     if (!_checkCollision(newPiece)) {
@@ -172,7 +261,8 @@ class GameLogic extends ChangeNotifier {
   }
 
   bool rotatePiece() {
-    if (gameOver || isPaused || currentPiece == null || isLineClearing) return false;
+    // Only accept input when game is actively playing
+    if (!_gameState.acceptsInput || currentPiece == null || isLineClearing) return false;
     
     // Debounce rapid rotations
     final now = DateTime.now();
@@ -301,7 +391,8 @@ class GameLogic extends ChangeNotifier {
   }
 
   void hardDrop() {
-    if (gameOver || isPaused || currentPiece == null || isLineClearing) return;
+    // Only accept input when game is actively playing
+    if (!_gameState.acceptsInput || currentPiece == null || isLineClearing) return;
 
     int dropDistance = 0;
     while (movePieceDown()) {
@@ -311,28 +402,21 @@ class GameLogic extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// LEGACY METHOD - replaced by proper state management
+  /// Kept for backward compatibility with existing UI
   void reset() {
-    board = List.generate(rows, (i) => List.generate(cols, (j) => null));
-    score = 0;
-    level = 1;
-    lines = 0;
-    gameOver = false;
-    isPaused = false;
-    isLineClearing = false;
-    clearingLines.clear();
-    currentPiece = null;
-    nextPiece = null;
-    ghostPiece = null;
-    _lastMoveTime = null;
-    _lastRotateTime = null;
+    _resetGameData();
+    _setState(GameState.playing);
     _initializeGame();
-    notifyListeners();
   }
 
+  /// LEGACY METHOD - replaced by pauseGame/resumeGame
+  /// Kept for backward compatibility with existing UI
   void togglePause() {
-    if (!gameOver) {
-      isPaused = !isPaused;
-      notifyListeners();
+    if (_gameState == GameState.playing) {
+      pauseGame();
+    } else if (_gameState == GameState.paused) {
+      resumeGame();
     }
   }
 
