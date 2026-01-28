@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'tetromino.dart';
 import 'constants.dart';
+import 'score_manager.dart';
 import 'dart:math';
 
 class GameLogic extends ChangeNotifier {
@@ -30,7 +30,6 @@ class GameLogic extends ChangeNotifier {
   DateTime? _lastRotateTime;
 
   final Random _random = Random();
-  SharedPreferences? _prefs;
 
   GameLogic() {
     _loadHighScore();
@@ -38,15 +37,9 @@ class GameLogic extends ChangeNotifier {
   }
 
   Future<void> _loadHighScore() async {
-    _prefs = await SharedPreferences.getInstance();
-    highScore = _prefs?.getInt(GameConstants.highScoreKey) ?? 0;
+    await ScoreManager.instance.initialize();
+    highScore = ScoreManager.instance.getHighScore();
     notifyListeners();
-  }
-
-  Future<void> _saveHighScore() async {
-    if (_prefs != null) {
-      await _prefs!.setInt(GameConstants.highScoreKey, highScore);
-    }
   }
 
   void _initializeGame() {
@@ -66,6 +59,7 @@ class GameLogic extends ChangeNotifier {
 
     if (_checkCollision(currentPiece!)) {
       gameOver = true;
+      // Update high score immediately when game ends
       _updateHighScore();
       notifyListeners();
       return;
@@ -296,10 +290,13 @@ class GameLogic extends ChangeNotifier {
     score += points;
   }
 
+  /// Updates high score if current score is higher
+  /// Ensures immediate UI update and proper persistence
   Future<void> _updateHighScore() async {
-    if (score > highScore) {
+    final isNewHighScore = await ScoreManager.instance.updateHighScore(score);
+    if (isNewHighScore) {
       highScore = score;
-      await _saveHighScore();
+      notifyListeners(); // Ensure UI updates immediately
     }
   }
 

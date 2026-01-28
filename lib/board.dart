@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'game_logic.dart';
 import 'controls.dart';
 import 'constants.dart';
+import 'game_over_dialog.dart';
 
 class GameBoard extends StatefulWidget {
   const GameBoard({super.key});
@@ -127,6 +128,12 @@ class _GameBoardState extends State<GameBoard>
             
             if (gameLogic.gameOver && !_gameOverController.isCompleted) {
               _gameOverController.forward();
+              // Show game over dialog after animation
+              Future.delayed(GameConstants.gameOverAnimationDuration, () {
+                if (mounted && gameLogic.gameOver) {
+                  _showGameOverDialog();
+                }
+              });
             }
             
             return _buildMobileLayout();
@@ -605,34 +612,33 @@ class _GameBoardState extends State<GameBoard>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: () {
-                      _gameOverController.reset();
-                      gameLogic.reset();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: GameConstants.primaryCyan,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'PLAY AGAIN',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  void _showGameOverDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (context) => GameOverDialog(
+        score: gameLogic.score,
+        highScore: gameLogic.highScore,
+        isNewHighScore: gameLogic.score == gameLogic.highScore && gameLogic.score > 0,
+        onRetry: () {
+          Navigator.of(context).pop(); // Close dialog
+          _gameOverController.reset();
+          gameLogic.reset();
+        },
+        onHome: () {
+          Navigator.of(context).pop(); // Close dialog
+          Navigator.of(context).pop(); // Go back to home screen
+        },
+      ),
     );
   }
 }

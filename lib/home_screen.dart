@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'board.dart';
 import 'constants.dart';
+import 'score_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,10 +54,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadHighScore() async {
-    final prefs = await SharedPreferences.getInstance();
+    await ScoreManager.instance.initialize();
     if (mounted) {
       setState(() {
-        highScore = prefs.getInt(GameConstants.highScoreKey) ?? 0;
+        highScore = ScoreManager.instance.getHighScore();
       });
     }
   }
@@ -132,12 +132,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         _buildAnimatedMenuButton(
                           'PLAY',
                           Icons.play_arrow,
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const GameBoard(),
-                            ),
-                          ),
+                          () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const GameBoard(),
+                              ),
+                            );
+                            // Refresh high score when returning from game
+                            _loadHighScore();
+                          },
                           0,
                           screenWidth,
                           isSmallScreen,
@@ -190,12 +194,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (screenWidth < GameConstants.smallScreenWidth) return 36;
     if (screenWidth < GameConstants.mediumScreenWidth) return 48;
     return 60;
-  }
-
-  double _getSubtitleFontSize(double screenWidth) {
-    if (screenWidth < GameConstants.smallScreenWidth) return 12;
-    if (screenWidth < GameConstants.mediumScreenWidth) return 14;
-    return 16;
   }
 
   double _getButtonFontSize(double screenWidth) {
