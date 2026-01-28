@@ -55,9 +55,7 @@ A modern, mobile-first Tetris game built with Flutter. Featuring responsive desi
 - **Stable 60 FPS** on low-end devices
 - **Minimal battery usage** with optimized game loop
 
-## 📱 Screenshots
 
-*Add your game screenshots here*
 
 ## 🛠️ Installation
 
