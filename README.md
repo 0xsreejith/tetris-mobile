@@ -71,7 +71,7 @@ A modern, mobile-first Tetris game built with Flutter. Featuring responsive desi
 ### Setup
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/tetris-mobile.git
+   git clone https://github.com/0xsreejith/tetris-mobile.git
    cd tetris-mobile
    ```
 
@@ -205,7 +205,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 If you encounter any issues or have questions:
-- Open an [issue](https://github.com/yourusername/tetris-mobile/issues)
+- Open an [issue](https://github.com/0xsreejith/tetris-mobile/issues)
 - Check the [Flutter documentation](https://docs.flutter.dev/)
 
 ---
