@@ -73,6 +73,10 @@ class _GameControlsState extends State<GameControls> {
         );
         final labelFontSize = (buttonSize * 0.2).clamp(9.0, 14.0);
         final horizontalGap = buttonSize * (compact ? 0.25 : 0.4);
+        final topRowGap = (buttonSize * (compact ? 0.35 : 0.55)).clamp(
+          10.0,
+          28.0,
+        );
 
         return Padding(
           padding: EdgeInsets.symmetric(
@@ -85,7 +89,7 @@ class _GameControlsState extends State<GameControls> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildControlButton(
                       key: 'rotate',
@@ -97,6 +101,7 @@ class _GameControlsState extends State<GameControls> {
                       size: buttonSize,
                       labelFontSize: labelFontSize,
                     ),
+                    SizedBox(width: topRowGap),
                     _buildControlButton(
                       key: 'hardDrop',
                       icon: Icons.keyboard_double_arrow_down,
@@ -107,6 +112,7 @@ class _GameControlsState extends State<GameControls> {
                       size: buttonSize,
                       labelFontSize: labelFontSize,
                     ),
+                    SizedBox(width: topRowGap),
                     _buildControlButton(
                       key: 'pause',
                       icon: widget.isPaused ? Icons.play_arrow : Icons.pause,
