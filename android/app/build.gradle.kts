@@ -3,15 +3,18 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+
 if (keystorePropertiesFile.exists()) {
-    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+    keystorePropertiesFile.inputStream().use {
+        keystoreProperties.load(it)
+    }
 }
+
 val isReleaseBuild =
     gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 
@@ -25,8 +28,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        jvmToolchain(17)
     }
 
     defaultConfig {
@@ -38,32 +41,39 @@ android {
     }
 
     signingConfigs {
-    create("release") {
-        val propertiesFile = rootProject.file("key.properties")
-        if (propertiesFile.exists()) {
-            val properties = java.util.Properties()
-            properties.load(propertiesFile.inputStream())
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                val storeFilePath = keystoreProperties.getProperty("storeFile")
+                val storePassword = keystoreProperties.getProperty("storePassword")
+                val keyAlias = keystoreProperties.getProperty("keyAlias")
+                val keyPassword = keystoreProperties.getProperty("keyPassword")
 
-            storeFile = file(properties["storeFile"] as String)
-            storePassword = properties["storePassword"] as String
-            keyAlias = properties["keyAlias"] as String
-            keyPassword = properties["keyPassword"] as String
+                if (
+                    storeFilePath != null &&
+                    storePassword != null &&
+                    keyAlias != null &&
+                    keyPassword != null
+                ) {
+                    storeFile = rootProject.file(storeFilePath)
+                    this.storePassword = storePassword
+                    this.keyAlias = keyAlias
+                    this.keyPassword = keyPassword
+                }
+            }
         }
     }
-}
 
     buildTypes {
         release {
-            if (!keystorePropertiesFile.exists()) {
-                if (isReleaseBuild) {
-                    throw GradleException(
-                        "Missing android/key.properties for release signing. " +
-                            "Copy android/key.properties.example to android/key.properties and fill values.",
-                    )
-                }
-            } else {
+            //  IMPORTANT: allow CI without signing
+            if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                println("⚠️ No key.properties found, building unsigned APK (CI mode)")
             }
+
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

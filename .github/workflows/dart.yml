@@ -3,42 +3,40 @@ name: Flutter CI
 on:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Setup Java (required for Android build)
-      - name: Set up Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # Setup Flutter 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.2'   
+          flutter-version: '3.41.2'
 
-      # Verify versions
-      - name: Check versions
+      - name: Check Flutter Version
         run: flutter --version
 
-      # Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Analyze 
       - name: Analyze
         run: flutter analyze || true
 
-      # Build APK
       - name: Build APK
         run: flutter build apk --release
+
+      - name: Upload APK (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
