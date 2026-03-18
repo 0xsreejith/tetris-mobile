@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
-import 'constants.dart';
+
+import '../../../../core/constants/game_constants.dart';
 
 class GameOverDialog extends StatelessWidget {
-  final int score;
-  final int highScore;
-  final bool isNewHighScore;
-  final VoidCallback onRetry;
-  final VoidCallback onHome;
-
   const GameOverDialog({
     super.key,
     required this.score,
@@ -16,6 +11,12 @@ class GameOverDialog extends StatelessWidget {
     required this.onRetry,
     required this.onHome,
   });
+
+  final int score;
+  final int highScore;
+  final bool isNewHighScore;
+  final VoidCallback onRetry;
+  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +42,6 @@ class GameOverDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Game Over Title
             const Text(
               'GAME OVER',
               style: TextStyle(
@@ -51,18 +51,13 @@ class GameOverDialog extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
-            
             const SizedBox(height: 20),
-            
-            // Score Display
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: GameConstants.backgroundColor,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
               ),
               child: Column(
                 children: [
@@ -87,12 +82,22 @@ class GameOverDialog extends StatelessWidget {
                 ],
               ),
             ),
-            
-            // New High Score Celebration
+            const SizedBox(height: 12),
+            Text(
+              'High Score: $highScore',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (isNewHighScore) ...[
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: GameConstants.primaryYellow.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -102,7 +107,7 @@ class GameOverDialog extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  '🎉 NEW HIGH SCORE! 🎉',
+                  'NEW HIGH SCORE!',
                   style: TextStyle(
                     color: GameConstants.primaryYellow,
                     fontSize: 16,
@@ -111,20 +116,16 @@ class GameOverDialog extends StatelessWidget {
                 ),
               ),
             ],
-            
             const SizedBox(height: 24),
-            
-            // Action Buttons
             Row(
               children: [
-                // Home Button
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onHome,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: GameConstants.backgroundColor,
                       foregroundColor: Colors.white,
-                      side: BorderSide(
+                      side: const BorderSide(
                         color: GameConstants.primaryPurple,
                         width: 2,
                       ),
@@ -150,10 +151,7 @@ class GameOverDialog extends StatelessWidget {
                     ),
                   ),
                 ),
-                
                 const SizedBox(width: 12),
-                
-                // Retry Button
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onRetry,

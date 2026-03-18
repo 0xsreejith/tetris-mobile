@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'home_screen.dart';
-import 'constants.dart';
+
+import 'core/constants/game_constants.dart';
+import 'core/routing/app_router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Lock orientation to portrait only (mobile-first)
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   // Set system UI overlay style for better mobile experience
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -21,7 +22,7 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-  
+
   runApp(const TetrisApp());
 }
 
@@ -58,7 +59,8 @@ class TetrisApp extends StatelessWidget {
           surface: GameConstants.boardBackgroundColor,
         ),
       ),
-      home: const HomeScreen(),
+      initialRoute: AppRouter.home,
+      onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }
 }

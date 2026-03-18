@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tetris/constants.dart';
-import 'package:tetris/game_logic.dart';
-import 'package:tetris/tetromino.dart';
+import 'package:tetris/core/constants/game_constants.dart';
+import 'package:tetris/features/game/domain/game_logic.dart';
+import 'package:tetris/features/game/domain/score_manager.dart';
+import 'package:tetris/features/game/domain/tetromino.dart';
 
 void main() {
   setUp(() async {
@@ -29,7 +31,7 @@ void main() {
       expect(game.lines, 0);
       expect(game.gameOver, isFalse);
       expect(game.isPaused, isFalse);
-      
+
       game.dispose();
     });
   });
@@ -38,7 +40,7 @@ void main() {
     test('piece cannot move left past wall', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start the game to enable input
       game.startGame();
 
@@ -47,14 +49,14 @@ void main() {
 
       final moved = game.movePieceLeft();
       expect(moved, isFalse);
-      
+
       game.dispose();
     });
 
     test('piece cannot move right past wall', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start the game to enable input
       game.startGame();
 
@@ -64,19 +66,23 @@ void main() {
 
       final moved = game.movePieceRight();
       expect(moved, isFalse);
-      
+
       game.dispose();
     });
 
     test('piece moves down until lock', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start the game to enable input
       game.startGame();
 
       // Use a simple I piece
-      final piece = Tetromino.create(TetrominoType.I, GameConstants.cols ~/ 2, 0);
+      final piece = Tetromino.create(
+        TetrominoType.I,
+        GameConstants.cols ~/ 2,
+        0,
+      );
       game.currentPiece = piece;
 
       var moved = true;
@@ -89,7 +95,7 @@ void main() {
       // After moving down until it locks, there should be a colored cell on the board
       final hasCell = game.board.any((row) => row.any((c) => c != null));
       expect(hasCell, isTrue);
-      
+
       game.dispose();
     });
   });
@@ -98,7 +104,7 @@ void main() {
     test('rotate succeeds in open space', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start the game to enable input
       game.startGame();
 
@@ -109,7 +115,7 @@ void main() {
       final rotated = game.rotatePiece();
       expect(rotated, isTrue);
       expect(game.currentPiece, isNotNull);
-      
+
       game.dispose();
     });
   });
@@ -118,12 +124,16 @@ void main() {
     test('hard drop increases score based on drop distance', () async {
       final game = GameLogic();
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start the game to enable input
       game.startGame();
 
       // Use I piece to drop from top
-      game.currentPiece = Tetromino.create(TetrominoType.I, GameConstants.cols ~/ 2, 0);
+      game.currentPiece = Tetromino.create(
+        TetrominoType.I,
+        GameConstants.cols ~/ 2,
+        0,
+      );
 
       game.hardDrop();
 
@@ -133,8 +143,94 @@ void main() {
       // There should be at least one filled cell in the bottom area
       final hasCell = game.board.any((row) => row.any((c) => c != null));
       expect(hasCell, isTrue);
-      
+
       game.dispose();
     });
+  });
+
+  group('GameLogic - high score correctness', () {
+    Future<void> triggerGameOver(
+      GameLogic game, {
+      required int finalScore,
+    }) async {
+      game.startGame();
+      game.score = finalScore;
+
+      for (var col = 3; col <= 6; col++) {
+        game.board[0][col] = Colors.red;
+        game.board[1][col] = Colors.red;
+      }
+
+      game.currentPiece = Tetromino.create(
+        TetrominoType.O,
+        0,
+        GameConstants.rows - 2,
+      );
+      game.movePieceDown();
+
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    }
+
+    test('tie score does not trigger new high score', () async {
+      final game = GameLogic();
+      await Future<void>.delayed(Duration.zero);
+      await ScoreManager.instance.setHighScore(500);
+      game.highScore = 500;
+
+      await triggerGameOver(game, finalScore: 500);
+
+      expect(game.gameOver, isTrue);
+      expect(game.highScore, 500);
+      expect(game.isNewHighScore, isFalse);
+
+      game.dispose();
+    });
+
+    test('higher score marks new high score', () async {
+      final game = GameLogic();
+      await Future<void>.delayed(Duration.zero);
+      await ScoreManager.instance.setHighScore(100);
+      game.highScore = 100;
+
+      await triggerGameOver(game, finalScore: 120);
+
+      expect(game.gameOver, isTrue);
+      expect(game.highScore, 120);
+      expect(game.isNewHighScore, isTrue);
+
+      game.dispose();
+    });
+
+    test(
+      'async high score update uses immutable final score after reset',
+      () async {
+        final game = GameLogic();
+        await Future<void>.delayed(Duration.zero);
+        await ScoreManager.instance.setHighScore(100);
+        game.highScore = 100;
+
+        game.startGame();
+        game.score = 150;
+        for (var col = 3; col <= 6; col++) {
+          game.board[0][col] = Colors.red;
+          game.board[1][col] = Colors.red;
+        }
+        game.currentPiece = Tetromino.create(
+          TetrominoType.O,
+          0,
+          GameConstants.rows - 2,
+        );
+        game.movePieceDown();
+
+        game.reset();
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+
+        expect(game.score, 0);
+        expect(game.highScore, 150);
+        expect(game.isNewHighScore, isFalse);
+
+        game.dispose();
+      },
+    );
   });
 }

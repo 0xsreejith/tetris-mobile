@@ -109,7 +109,7 @@ class Tetromino {
   }
 
   Tetromino rotate() {
-    List<List<int>> rotated = List.generate(
+    final rotated = List.generate(
       shape[0].length,
       (i) => List.generate(shape.length, (j) => shape[shape.length - 1 - j][i]),
     );

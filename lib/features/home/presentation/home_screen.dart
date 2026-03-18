@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'board.dart';
-import 'constants.dart';
-import 'score_manager.dart';
+
+import '../../../core/constants/game_constants.dart';
+import '../../../core/routing/app_router.dart';
+import '../../game/domain/score_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,7 +83,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final screenWidth = constraints.maxWidth;
-              final isSmallScreen = screenWidth < GameConstants.smallScreenWidth;
+              final isSmallScreen =
+                  screenWidth < GameConstants.smallScreenWidth;
 
               return Column(
                 children: [
@@ -107,14 +109,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     letterSpacing: 4,
                                     shadows: [
                                       Shadow(
-                                        color: GameConstants.primaryCyan.withValues(alpha: 0.8),
+                                        color: GameConstants.primaryCyan
+                                            .withValues(alpha: 0.8),
                                         blurRadius: 20,
                                         offset: const Offset(0, 0),
                                       ),
                                     ],
                                   ),
                                 ),
-                              
                               ],
                             ),
                           );
@@ -133,12 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           'PLAY',
                           Icons.play_arrow,
                           () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GameBoard(),
-                              ),
-                            );
+                            await Navigator.pushNamed(context, AppRouter.game);
                             // Refresh high score when returning from game
                             _loadHighScore();
                           },
@@ -220,7 +217,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           offset: Offset(0, 50 * (1 - animationValue)),
           child: Opacity(
             opacity: animationValue,
-            child: _buildMenuButton(text, icon, onPressed, screenWidth, isSmallScreen),
+            child: _buildMenuButton(
+              text,
+              icon,
+              onPressed,
+              screenWidth,
+              isSmallScreen,
+            ),
           ),
         );
       },
@@ -228,15 +231,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMenuButton(
-    String text, 
-    IconData icon, 
+    String text,
+    IconData icon,
     VoidCallback onPressed,
     double screenWidth,
     bool isSmallScreen,
   ) {
     final buttonWidth = screenWidth * (isSmallScreen ? 0.8 : 0.7);
     final buttonHeight = isSmallScreen ? 50.0 : 60.0;
-    
+
     return SizedBox(
       width: buttonWidth,
       height: buttonHeight,
@@ -259,8 +262,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              icon, 
-              size: isSmallScreen ? 20 : 24, 
+              icon,
+              size: isSmallScreen ? 20 : 24,
               color: GameConstants.primaryCyan,
             ),
             SizedBox(width: isSmallScreen ? 8 : 12),
@@ -292,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: const Text(
           'HIGH SCORE',
           style: TextStyle(
-            color: Colors.white, 
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
           ),
@@ -330,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'OK', 
+              'OK',
               style: TextStyle(color: GameConstants.primaryCyan),
             ),
           ),
@@ -353,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: const Text(
           'HOW TO PLAY',
           style: TextStyle(
-            color: Colors.white, 
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
           ),
@@ -367,8 +370,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'TOUCH CONTROLS:',
                 GameConstants.primaryCyan,
                 [
-                  _buildInstructionItem(Icons.touch_app, 'Tap board', 'Rotate piece'),
-                  _buildInstructionItem(Icons.swipe, 'Swipe left/right', 'Move piece'),
+                  _buildInstructionItem(
+                    Icons.touch_app,
+                    'Tap board',
+                    'Rotate piece',
+                  ),
+                  _buildInstructionItem(
+                    Icons.swipe,
+                    'Swipe left/right',
+                    'Move piece',
+                  ),
                   _buildInstructionItem(Icons.swipe, 'Swipe down', 'Soft drop'),
                 ],
               ),
@@ -377,8 +388,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'BUTTONS:',
                 GameConstants.primaryPurple,
                 [
-                  _buildInstructionItem(Icons.rotate_left, 'Rotate', 'Rotate piece'),
-                  _buildInstructionItem(Icons.keyboard_double_arrow_down, 'Drop', 'Hard drop'),
+                  _buildInstructionItem(
+                    Icons.rotate_left,
+                    'Rotate',
+                    'Rotate piece',
+                  ),
+                  _buildInstructionItem(
+                    Icons.keyboard_double_arrow_down,
+                    'Drop',
+                    'Hard drop',
+                  ),
                   _buildInstructionItem(Icons.pause, 'Pause', 'Pause/Resume'),
                 ],
               ),
@@ -387,15 +406,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'SCORING:',
                 GameConstants.primaryGreen,
                 [
-                  '• Single line: 100 × level',
-                  '• Double line: 300 × level',
-                  '• Triple line: 500 × level',
-                  '• Tetris (4 lines): 800 × level',
-                  '• Hard drop: +2 per cell',
-                ].map((text) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                )).toList(),
+                      '• Single line: 100 × level',
+                      '• Double line: 300 × level',
+                      '• Triple line: 500 × level',
+                      '• Tetris (4 lines): 800 × level',
+                      '• Hard drop: +2 per cell',
+                    ]
+                    .map(
+                      (text) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ),
@@ -404,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'GOT IT!', 
+              'GOT IT!',
               style: TextStyle(color: GameConstants.primaryCyan),
             ),
           ),
@@ -413,7 +442,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildInstructionSection(String title, Color color, List<Widget> items) {
+  Widget _buildInstructionSection(
+    String title,
+    Color color,
+    List<Widget> items,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -432,7 +465,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildInstructionItem(IconData icon, String action, String description) {
+  Widget _buildInstructionItem(
+    IconData icon,
+    String action,
+    String description,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -453,10 +490,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   TextSpan(
                     text: description,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ],
               ),
